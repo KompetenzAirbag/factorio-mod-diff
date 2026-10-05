@@ -1,5 +1,7 @@
 #pragma once
 
+#include "gen_types.h"
+
 #define DA_INIT_CAP (256UL)
 
 /* da_reserve will reserve space for a dynamic array */
