@@ -16,5 +16,5 @@ This will generate an executable in the `factorio-mod-diff` directory.
 factorio-mod-diff [FLAGS]
     -i | --instances <path>,<path>
     -o | --output <path> defaults to stdout, any other path will generate a file. ".json" does not need to be mentioned.
-    -p | --prototype <string> defaults to all prototypes, can be any factorio prototype e.g. "recipe"
 ```
+`<path>` may include `~` which will be substituted with your home directory.
