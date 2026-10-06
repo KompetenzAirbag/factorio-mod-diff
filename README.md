@@ -1,5 +1,5 @@
 # Factorio Mod Diff
-Generates a json file of Factorio recipes differences across different game instances.
+Generates a json file of Factorio recipe differences across different game instances.
 
 # Installation
 ## Build from source
@@ -9,12 +9,12 @@ git clone https://github.com/KompetenzAirbag/factorio-mod-diff && \
 cd factorio-mod-diff && \
 make
 ```
-This will generate an executable in the `factorio-mod-diff` directory.
+This will generate an executable in the current directory.
 
 # Usage
 ```{bash}
 factorio-mod-diff [FLAGS]
-    -i | --instances <path>,<path>
+    -i | --instances <path> <path> path should point to the base directory of Factorio (for Steam installs: <steam>/steamapps/common/Factorio)
     -o | --output <path> defaults to stdout, any other path will generate a file. ".json" does not need to be mentioned.
 ```
 `<path>` may include `~` which will be substituted with your home directory.

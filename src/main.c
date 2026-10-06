@@ -18,7 +18,7 @@ run_factorio_instance( char* path, char* args )
 cJSON*
 generate_data_json( char* f_base_path )
 {
-    // This is done so I can just call free on it later
+    // This is done to be able to just call free on it later
     char* factorio_base_path = malloc( strlen( f_base_path ) + 1 );
     strcpy( factorio_base_path, f_base_path );
 
@@ -60,13 +60,66 @@ generate_data_json( char* f_base_path )
     return out;
 }
 
-int
-main()
+typedef struct Runtime_flags
 {
-    cJSON* json = generate_data_json( "~/Games/factorio" );
+    char* instance_path_1;
+    char* instance_path_2;
+    FILE* output_file;
+    int   should_close_output_file;
+} Runtime_flags;
+
+void
+parse_flags( int argc, char** argv, Runtime_flags* r_flags )
+{
+    for( int i = 0; i < argc; i++ ) {
+        char* flag = argv[i];
+
+        if( strcmp( flag, "-i") == 0 || strcmp( flag, "--instances" ) == 0 ) {
+            ENSURE_ERR( (i+2) < argc, "Missing arguments for %s flag. See -h for help", flag );
+            r_flags->instance_path_1 = argv[++i];
+            r_flags->instance_path_2 = argv[++i];
+        }
+
+        if( strcmp( flag, "-h" ) == 0 || strcmp( flag, "--help" ) == 0 ) {
+            printf( "factorio-mod-diff [FLAGS]\n    -i | --instances <path> <path> path should point to the base directory of Factorio (for Steam installs: <steam>/steamapps/common/Factorio)\n    -o | --output <path> defaults to stdout, any other path will generate a file. \".json\" does not need to be mentioned.\n" );
+            exit(0);
+        }
+
+        if( strcmp( flag, "-o" ) == 0 || strcmp( flag, "--output" ) == 0 ) {
+            ENSURE_ERR( (i++) < argc, "Missing argument for %s flag. See -h for help", flag );
+
+            char* output_file_path = malloc( strlen(argv[i])  + 1 );
+            strcpy( output_file_path, argv[i] );
+
+            char* home_dir = get_home_dir();
+
+            if( home_dir != NULL ) {
+                free( output_file_path ); // This must be freed as replace_in_string allocates its own memory
+                output_file_path = replace_in_string( argv[i], "~", home_dir );
+            }
+            r_flags->output_file = fopen( output_file_path, "w+" );
+
+            ENSURE_NON_NULL( r_flags->output_file, "Failed to open output file: %s", strerror( errno ) );
+
+            r_flags->should_close_output_file = 1;
+            free( output_file_path );
+        }
+    }
+}
+
+int
+main( int argc, char** argv )
+{
+    Runtime_flags r_flags = {0};
+    parse_flags( argc, argv, &r_flags );
+
+    ENSURE_NON_NULL( r_flags.instance_path_1, "Must provide Factorio instance path with -i. See -h for help." );
+    cJSON* json = generate_data_json( r_flags.instance_path_1 );
     cJSON* recipe_json = cJSON_GetObjectItem( json, "recipe" );
     ENSURE_NON_NULL( recipe_json, "Could not load recipes from json" );
 
     cJSON_Delete( json );
+
+    if( r_flags.should_close_output_file ) fclose( r_flags.output_file );
     return 0;
 }
