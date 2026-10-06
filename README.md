@@ -18,3 +18,6 @@ factorio-mod-diff [FLAGS]
     -o | --output <path> defaults to stdout, any other path will generate a file. ".json" does not need to be mentioned.
 ```
 `<path>` may include `~` which will be substituted with your home directory.
+
+# TODO
+- [ ] Add support for 'space' in <path>
