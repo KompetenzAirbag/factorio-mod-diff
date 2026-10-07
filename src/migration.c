@@ -36,6 +36,21 @@ get_full_migration( struct hashmap* migration_map, Factorio_instance* inst_1, Fa
     free_string_buf( &active_mods_2 );
 }
 
+void
+free_migration_map( struct hashmap* migration_map )
+{
+    ulong iter = 0;
+    void* item;
+    while( hashmap_iter( migration_map, &iter, &item ) ) {
+        const struct Migration_data* migr_data = item;
+
+        free( migr_data->from );
+        free( migr_data->to );
+    }
+
+    hashmap_free( migration_map );
+};
+
 struct hashmap*
 new_migration_map()
 {

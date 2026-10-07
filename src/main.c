@@ -75,16 +75,7 @@ main( int argc, char** argv )
     free_factorio_instance( &inst_1 );
     free_factorio_instance( &inst_2 );
 
-    ulong iter = 0;
-    void* item;
-    while( hashmap_iter( migration_map, &iter, &item ) ) {
-        const struct Migration_data* migr_data = item;
-
-        free( migr_data->from );
-        free( migr_data->to );
-    }
-
-    hashmap_free( migration_map );
+    free_migration_map( migration_map );
 
     if( r_flags.should_close_output_file ) fclose( r_flags.output_file );
     return 0;

@@ -14,3 +14,6 @@ get_full_migration( struct hashmap* migration_map, Factorio_instance* inst_1, Fa
 
 struct hashmap*
 new_migration_map();
+
+void
+free_migration_map( struct hashmap* migration_map );
