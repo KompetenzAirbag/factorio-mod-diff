@@ -20,4 +20,6 @@ factorio-mod-diff [FLAGS]
 `<path>` may include `~` which will be substituted with your home directory.
 
 # TODO
-- [ ] Add support for 'space' in <path>
+- [ ] Add support for 'space' in \<path\>
+- [ ] Generate full migration map from all mods per instance
+- [ ] Add UI with clay

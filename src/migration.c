@@ -28,10 +28,6 @@ get_full_migration( struct hashmap* migration_map, Factorio_instance* inst_1, Fa
     String_buf active_mods_1 = get_active_mods( inst_1 );
     String_buf active_mods_2 = get_active_mods( inst_2 );
 
-    for( ulong i = 0; i < active_mods_1.count; i++ ) {
-        LOG_INFO( "%s", active_mods_1.items[i].items );
-    }
-
     free_string_buf( &active_mods_1 );
     free_string_buf( &active_mods_2 );
 }
