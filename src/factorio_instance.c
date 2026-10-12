@@ -8,13 +8,12 @@
 void
 run_factorio_instance( char* path, char* args )
 {
-    char* exe_path = concat_strings( path, args );
+    char* exe_path = concat_strings_with_delimiter( path, args, ' ' );
 
-    FILE* f_instance_1 = popen( exe_path, "r" );
-    ENSURE_NON_NULL( f_instance_1, "Failed not execute %s", path );
+    int status = system( exe_path );
+    ENSURE_ERR( status == 0, "Factorio did not run successfully and exited with status code %i", status );
 
     free( exe_path );
-    pclose( f_instance_1 );
 }
 
 cJSON*

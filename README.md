@@ -23,3 +23,4 @@ factorio-mod-diff [FLAGS]
 - [ ] Add support for 'space' in \<path\>
 - [ ] Generate full migration map from all mods per instance
 - [ ] Add UI with clay
+- [ ] Remove trailing "/" from -i path flags
