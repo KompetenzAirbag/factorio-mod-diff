@@ -11,10 +11,18 @@ void
 free_string_buf( String_buf* str_buf )
 {
     for( ulong i = 0; i < str_buf->count; i++ ) {
-        free( str_buf->items[i].items );
+        free( str_buf->items[i] );
     }
 
     free( str_buf->items );
+}
+
+void
+log_string_buf( String_buf* str_buf )
+{
+    for( uint i = 0; i < str_buf->count; i++ ) {
+        LOG_INFO( "%s", str_buf->items[i] );
+    }
 }
 
 char*
@@ -115,6 +123,13 @@ load_file( char* path )
     ENSURE_NON_NULL( file, "Could not open file for reading" );
 
     char ch;
+    typedef struct Char_buf
+    {
+        char* items;
+        ulong count;
+        ulong capacity;
+    } Char_buf;
+
     Char_buf char_buf = {0};
 
     while( (ch = fgetc( file )) != EOF ) {
@@ -132,25 +147,34 @@ load_file( char* path )
 }
 
 String_buf
-split_string( char* str, char delimiter )
+split_string( const char* str, char delimiter )
 {
     String_buf out_buf = {0};
+    ulong last_i = 0;
+    ulong str_strlen = strlen( str );
 
-    da_append( &out_buf, (Char_buf){0} );
-
-    int line_count = 0;
-    for( ulong i = 0; i < strlen( str ); i++ ) {
+    for( ulong i = 0; i < str_strlen; i++ ) {
         if( str[i] == delimiter ) {
-            da_append( &out_buf.items[line_count], '\0' );
-            da_append( &out_buf, (Char_buf){0} );
-            line_count++;
-            continue;
-        }
+            ulong token_len = i - last_i;
 
-        da_append( &out_buf.items[line_count], str[i] );
+            char* token = malloc( token_len + 1 );
+            memcpy( token, str + last_i, token_len );
+            token[token_len] = '\0';
+            last_i = ++i;
+
+            da_append( &out_buf, token );
+        }
     }
 
-    da_append( &out_buf.items[line_count], '\0' );
+    if( last_i + 1 < str_strlen ) {
+        ulong token_len = str_strlen - last_i;
+
+        char* token = malloc( token_len + 1 );
+        memcpy( token, str + last_i, token_len );
+        token[token_len] = '\0';
+
+        da_append( &out_buf, token );
+    }
 
     return out_buf;
 }

@@ -24,3 +24,4 @@ factorio-mod-diff [FLAGS]
 - [ ] Generate full migration map from all mods per instance
 - [ ] Add UI with clay
 - [ ] Remove trailing "/" from -i path flags
+- [ ] There can be multiple zips of the same mod (i. e. different versions)

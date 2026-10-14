@@ -4,6 +4,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <unistd.h>
 
 void
 run_factorio_instance( char* path, char* args )
@@ -24,25 +25,13 @@ generate_data_json( Factorio_instance* inst )
     run_factorio_instance( inst->bin_path, factorio_flags );
 
     char* data_dump_file_path = concat_strings( inst->config_path, "/../script-output/data-raw-dump.json" );
-    FILE* data_dump_file = fopen( data_dump_file_path, "r" );
-    ENSURE_NON_NULL( data_dump_file, "Could not open data dump file at %s: %s", data_dump_file_path, strerror( errno ) );
+    char* data_dump_file = load_file( data_dump_file_path );
 
-    char ch;
-    Char_buf char_buf = {0};
-
-    /* Reading file */
-    while( (ch = fgetc( data_dump_file )) != EOF ) {
-        da_append( &char_buf, ch );
-    }
-    da_append( &char_buf, '\0' );
-
-    cJSON* out = cJSON_Parse( char_buf.items );
+    cJSON* out = cJSON_Parse( data_dump_file );
     ENSURE_NON_NULL( out, "Could not parse json file at: ", data_dump_file_path );
 
-    fclose( data_dump_file );
     free( data_dump_file_path );
-
-    free( char_buf.items );
+    free( data_dump_file );
 
     return out;
 }
@@ -81,10 +70,10 @@ set_config_path( Factorio_instance* inst )
     String_buf cfg_path_file_lines = split_string( cfg_path_file, '\n' );
     ENSURE_ERR( cfg_path_file_lines.count > 0, "%s is empty", cfg_path_file_path );
 
-    String_buf cfg_path_var = split_string( cfg_path_file_lines.items[0].items, '=' );
+    String_buf cfg_path_var = split_string( cfg_path_file_lines.items[0], '=' );
     ENSURE_ERR( cfg_path_var.count >= 2, "Could not find variable config-path in %s", cfg_path_file_path );
 
-    inst->config_path = replace_path_variables( cfg_path_var.items[1].items, inst );
+    inst->config_path = replace_path_variables( cfg_path_var.items[1], inst );
 
     free( cfg_path_file_path );
     free( cfg_path_file );
@@ -104,15 +93,15 @@ set_mod_path( Factorio_instance* inst )
     String_buf str_buf = split_string( config_ini_file, '\n' );
 
     for( ulong i = 0; i < str_buf.count; i++ ) {
-        String_buf write_data_buf = split_string( str_buf.items[i].items, '=' );
+        String_buf write_data_buf = split_string( str_buf.items[i], '=' );
 
         if( write_data_buf.count < 2 ) {
             free_string_buf( &write_data_buf );
             continue;
         }
 
-        if( strcmp( write_data_buf.items[0].items, "write-data" ) == 0 ) {
-            char* mods_path = replace_path_variables( write_data_buf.items[1].items, inst );
+        if( strcmp( write_data_buf.items[0], "write-data" ) == 0 ) {
+            char* mods_path = replace_path_variables( write_data_buf.items[1], inst );
             inst->mods_path = concat_strings( mods_path, "/mods" );
             free( mods_path );
         }
@@ -156,12 +145,11 @@ get_active_mods( Factorio_instance* inst )
         if( mod_name == NULL ) continue;
 
         /* Unsure if this is all needed or how cJSON_GetStringValue behaves */
-        da_append( &active_mods, (Char_buf){0} );
-        Char_buf* active_mods_entry = &active_mods.items[active_mods.count-1];
-        active_mods_entry->count = strlen( mod_name ) + 1;
+        da_append( &active_mods, (char*){0} );
+        char** active_mods_entry = &active_mods.items[active_mods.count-1];
 
-        active_mods_entry->items = realloc( active_mods_entry->items, active_mods_entry->count );
-        strcpy( active_mods_entry->items, mod_name );
+        *active_mods_entry = malloc( strlen( mod_name ) + 1 );
+        strcpy( *active_mods_entry, mod_name );
     }
 
     cJSON_Delete( mod_list );

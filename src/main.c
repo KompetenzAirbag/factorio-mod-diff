@@ -55,22 +55,27 @@ main( int argc, char** argv )
 
     ENSURE_NON_NULL( r_flags.instance_path_1, "Must provide Factorio instance path with -i. See -h for help." );
 
+    system( "rm -rf /tmp/factorio-mod-diff/" );
+
+    LOG_VERBOSE( "Loading factorio instances" );
     Factorio_instance inst_1 = load_factorio_instance( r_flags.instance_path_1 );
     Factorio_instance inst_2 = load_factorio_instance( r_flags.instance_path_2 );
 
+    LOG_VERBOSE( "Compute migration map" );
     struct hashmap* migration_map = new_migration_map();
     get_full_migration( migration_map, &inst_1, &inst_2 );
 
-    cJSON* json_1 = generate_data_json( &inst_1 );
-    cJSON* recipe_json_1 = cJSON_GetObjectItem( json_1, "recipe" );
-    ENSURE_NON_NULL( recipe_json_1, "Could not load recipes from json for instance 1" );
-
-    cJSON* json_2 = generate_data_json( &inst_2 );
-    cJSON* recipe_json_2 = cJSON_GetObjectItem( json_2, "recipe" );
-    ENSURE_NON_NULL( recipe_json_2, "Could not load recipes from json for instance 2" );
-
-    cJSON_Delete( json_1 );
-    cJSON_Delete( json_2 );
+    // LOG_VERBOSE( "Generate recipe json data" );
+    // cJSON* json_1 = generate_data_json( &inst_1 );
+    // cJSON* recipe_json_1 = cJSON_GetObjectItem( json_1, "recipe" );
+    // ENSURE_NON_NULL( recipe_json_1, "Could not load recipes from json for instance 1" );
+    //
+    // cJSON* json_2 = generate_data_json( &inst_2 );
+    // cJSON* recipe_json_2 = cJSON_GetObjectItem( json_2, "recipe" );
+    // ENSURE_NON_NULL( recipe_json_2, "Could not load recipes from json for instance 2" );
+    //
+    // cJSON_Delete( json_1 );
+    // cJSON_Delete( json_2 );
 
     free_factorio_instance( &inst_1 );
     free_factorio_instance( &inst_2 );

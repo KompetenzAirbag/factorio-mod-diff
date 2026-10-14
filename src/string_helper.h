@@ -2,16 +2,9 @@
 
 #include "util/gen_types.h"
 
-typedef struct Char_buf
-{
-    char* items;
-    ulong count;
-    ulong capacity;
-} Char_buf;
-
 typedef struct String_buf
 {
-    Char_buf* items;
+    char** items;
     ulong count;
     ulong capacity;
 } String_buf;
@@ -19,6 +12,9 @@ typedef struct String_buf
 /* free_string_buf will free String_buf type variables */
 void
 free_string_buf( String_buf* str_buf );
+
+void
+log_string_buf( String_buf* str_buf );
 
 /* replace_in_string will search for 'find' in src and replace it with
    'replace_with'. This function may (re)allocate memory and must be freed.
@@ -47,4 +43,4 @@ load_file( char* path );
 
 /* split_string splits a string by a delimiter. String_buf contains allocated memory which must be freed using free_string_buf */
 String_buf
-split_string( char* str, char delimiter );
+split_string( const char* str, char delimiter );
