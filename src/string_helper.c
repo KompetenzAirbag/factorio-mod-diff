@@ -3,6 +3,7 @@
 #include "util/dynamic_array.h"
 #include "util/util.h"
 
+#include <stdlib.h>
 #include <string.h>
 #include <pwd.h>
 #include <unistd.h>
@@ -23,6 +24,25 @@ log_string_buf( String_buf* str_buf )
     for( uint i = 0; i < str_buf->count; i++ ) {
         LOG_INFO( "%s", str_buf->items[i] );
     }
+}
+
+int
+compare_strings( const void* a, const void* b )
+{
+    const char* str_a = *(const char**)a;
+    const char* str_b = *(const char**)b;
+
+    return strcmp( str_a, str_b );
+}
+
+void
+string_buf_sort( String_buf* buf )
+{
+    if( buf == NULL || buf->items == NULL || buf->count <= 1 ) {
+        return;
+    }
+
+    qsort( buf->items, buf->count, sizeof(char*), compare_strings );
 }
 
 char*

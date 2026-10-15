@@ -62,8 +62,7 @@ main( int argc, char** argv )
     Factorio_instance inst_2 = load_factorio_instance( r_flags.instance_path_2 );
 
     LOG_VERBOSE( "Compute migration map" );
-    struct hashmap* migration_map = new_migration_map();
-    get_full_migration( migration_map, &inst_1, &inst_2 );
+    struct hashmap* migration_map = get_full_migration( &inst_1, &inst_2 );
 
     // LOG_VERBOSE( "Generate recipe json data" );
     // cJSON* json_1 = generate_data_json( &inst_1 );

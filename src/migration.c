@@ -1,4 +1,6 @@
 #include "migration.h"
+#include "cJSON.h"
+#include "hashmap.h"
 #include "log.h"
 #include "util.h"
 #include "util/gen_types.h"
@@ -24,6 +26,7 @@ migration_compare( const void* a, const void* b, void* migration_data )
 u64
 migration_hash( const void* item, u64 seed0, u64 seed1 ) {
     const Migration_data* migr = item;
+    ENSURE_NON_NULL( migr->from, "\"From\" cannot be null" );
     return hashmap_sip( migr->from, strlen( migr->from ), seed0, seed1 );
 }
 
@@ -132,7 +135,7 @@ get_file_list_per_mod( char* path_1, char* path_2 )
     for( uint i2 = 0; i2 < m_files_2.count; i2++ ) {
         ulong file_name_strlen = strlen( m_files_2.items[i2] );
 
-        if( strncmp( m_files_2.items[i2] + file_name_strlen - 4, ".lua", 4 ) != 0 ) continue;
+        if( strncmp( m_files_2.items[i2] + file_name_strlen - 5, ".json", 5 ) != 0 ) continue;
 
         int found = 0;
 
@@ -180,7 +183,7 @@ get_needed_migration_file_list( char* unzip_dir_1, char* unzip_dir_2 )
         String_buf f_name_cleaned = split_string( files_dir_2.items[i], '_' );
 
         if( f_name_cleaned.count >= 1 ) {
-            char* f_name = malloc( strlen( f_name_cleaned.items[0] ) + 1 );
+        char* f_name = malloc( strlen( f_name_cleaned.items[0] ) + 1 );
             strcpy( f_name, f_name_cleaned.items[0] );
             da_append( &files_dir_2_no_version, f_name );
         }
@@ -200,7 +203,10 @@ get_needed_migration_file_list( char* unzip_dir_1, char* unzip_dir_2 )
             char* base_path_2 = concat_strings_with_delimiter( _base_path_2, "migrations", '/' );
 
             if( strcmp( files_dir_1_no_version.items[f_index_1], files_dir_2_no_version.items[f_index_2] ) == 0 ) {
-                da_append( &m_file_list, get_file_list_per_mod( base_path_1, base_path_2 ) );
+                String_buf file_list = get_file_list_per_mod( base_path_1, base_path_2 );
+                string_buf_sort( &file_list );
+
+                da_append( &m_file_list, file_list );
             }
 
             free( _base_path_2 );
@@ -220,8 +226,14 @@ get_needed_migration_file_list( char* unzip_dir_1, char* unzip_dir_2 )
     return m_file_list;
 }
 
-void
-get_full_migration( struct hashmap* migration_map, Factorio_instance* inst_1, Factorio_instance* inst_2 )
+struct hashmap*
+new_migration_map()
+{
+    return hashmap_new( sizeof(Migration_data), 0, 0, 0, migration_hash, migration_compare, NULL, NULL );
+}
+
+struct hashmap*
+get_full_migration( Factorio_instance* inst_1, Factorio_instance* inst_2 )
 {
     String_buf active_mods_1 = get_active_mods( inst_1 );
     String_buf active_mods_2 = get_active_mods( inst_2 );
@@ -269,12 +281,56 @@ get_full_migration( struct hashmap* migration_map, Factorio_instance* inst_1, Fa
     free_string_buf( &active_mods_1 );
     free_string_buf( &active_mods_2 );
 
+    struct hashmap* migration_map = new_migration_map();
+
     Migration_file_list m_file_list = get_needed_migration_file_list( unzip_dir_1, unzip_dir_2 );
     for( uint i = 0; i < m_file_list.count; i++ ) {
         String_buf* files = &m_file_list.items[i];
 
         for( uint j = 0; j < files->count; j++ ) {
             LOG_DEBUG( "Migrating: %s", files->items[j] );
+
+            char* read_file = load_file( files->items[j] );
+            cJSON* json_migration = cJSON_Parse( read_file );
+            ENSURE_NON_NULL( json_migration, "Could not load json from migration" );
+            free( read_file );
+
+            cJSON* recipe_migration = cJSON_GetObjectItem( json_migration, "recipe" );
+            if( recipe_migration == NULL ) {
+                cJSON_Delete( json_migration );
+                continue;
+            }
+
+            cJSON* obj;
+            cJSON_ArrayForEach( obj, recipe_migration ) {
+                cJSON* from = cJSON_GetArrayItem( obj, 0 );
+                cJSON* to = cJSON_GetArrayItem( obj, 1 );
+                char* from_str = cJSON_GetStringValue( from );
+                char* to_str = cJSON_GetStringValue( to );
+                if( from_str == NULL || to_str == NULL ) continue;
+
+                const Migration_data* migr_data = hashmap_get( migration_map, &(Migration_data){ .from = from_str });
+                if( migr_data == NULL ) {
+                    Migration_data new_migr_data = {0};
+
+                    new_migr_data.from = malloc( strlen( from_str ) + 1 );
+                    new_migr_data.to = malloc( strlen( to_str ) + 1 );
+
+                    strcpy( new_migr_data.from, from_str );
+                    strcpy( new_migr_data.to, to_str );
+                    hashmap_set( migration_map, &new_migr_data );
+                } else {
+                    Migration_data new_migr_data = {0};
+
+                    new_migr_data.from = migr_data->from;
+                    new_migr_data.to = realloc( migr_data->to, strlen( to_str ) + 1 );
+                    strcpy( new_migr_data.to, to_str );
+
+                    hashmap_set( migration_map, &new_migr_data );
+                }
+            }
+
+            cJSON_Delete( json_migration );
         }
     }
 
@@ -283,6 +339,8 @@ get_full_migration( struct hashmap* migration_map, Factorio_instance* inst_1, Fa
     }
 
     free( m_file_list.items );
+
+    return migration_map;
 }
 
 void
@@ -299,9 +357,3 @@ free_migration_map( struct hashmap* migration_map )
 
     hashmap_free( migration_map );
 };
-
-struct hashmap*
-new_migration_map()
-{
-    return hashmap_new( sizeof(Migration_data), 0, 0, 0, migration_hash, migration_compare, NULL, NULL );
-}

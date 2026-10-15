@@ -16,6 +16,9 @@ free_string_buf( String_buf* str_buf );
 void
 log_string_buf( String_buf* str_buf );
 
+void
+string_buf_sort( String_buf* buf );
+
 /* replace_in_string will search for 'find' in src and replace it with
    'replace_with'. This function may (re)allocate memory and must be freed.
    This is a naive implementation */
