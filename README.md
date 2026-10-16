@@ -14,7 +14,7 @@ This will generate an executable in the current directory.
 # Usage
 ```{bash}
 factorio-mod-diff [FLAGS]
-    -i | --instances <path> <path> path should point to the base directory of Factorio (for Steam installs: <steam>/steamapps/common/Factorio)
+    -i | --instances <path 1> <path 2> path should point to the base directory of Factorio (for Steam installs: <steam>/steamapps/common/Factorio). <path 1> expects a 1.x or 2.x install while <path 2> only expects a 2.x install
     -o | --output <path> defaults to stdout, any other path will generate a file. ".json" does not need to be mentioned.
 ```
 `<path>` may include `~` which will be substituted with your home directory.
@@ -25,4 +25,4 @@ factorio-mod-diff [FLAGS]
 - [ ] Add UI with clay
 - [ ] Remove trailing "/" from -i path flags
 - [ ] There can be multiple zips of the same mod (i. e. different versions)
-- [ ] Run factorio instances in child process so they run in parallel
+- [x] Run factorio instances in child process so they run in parallel
