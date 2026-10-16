@@ -31,7 +31,7 @@ parse_flags( int argc, char** argv, Runtime_flags* r_flags )
         }
 
         if( strcmp( flag, "-h" ) == 0 || strcmp( flag, "--help" ) == 0 ) {
-            printf( "factorio-mod-diff [FLAGS]\n    -i | --instances <path> <path> path should point to the base directory of Factorio (for Steam installs: <steam>/steamapps/common/Factorio)\n    -o | --output <path> defaults to stdout, any other path will generate a file. \".json\" does not need to be mentioned.\n" );
+            printf( "factorio-mod-diff [FLAGS]\n    -i | --instances <path 1> <path 2> path should point to the base directory of Factorio (for Steam installs: <steam>/steamapps/common/Factorio). <path 1> expects a 1.x or 2.x install while <path 2> only expects a 2.x install\n    -o | --output <path> defaults to stdout, any other path will generate a file. \".json\" does not need to be mentioned.\n" );
             exit(0);
         }
 
