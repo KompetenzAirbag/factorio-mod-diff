@@ -5,6 +5,26 @@
 #include <string.h>
 #include <errno.h>
 
+char*
+unescape_path( const char* path )
+{
+    ulong len = strlen( path );
+    char* result = malloc( len + 1 );
+
+    ENSURE_NON_NULL(result, "Failed to allocate memory for path");
+
+    ulong j = 0;
+
+    for( ulong i = 0; i < len; i++ ) {
+        if( path[i] == '\\' && path[i + 1] == ' ' ) i++;
+
+        result[j++] = path[i];
+    }
+
+    result[j] = '\0';
+    return result;
+}
+
 void
 parse_flags( int argc, char** argv, Runtime_flags* r_flags )
 {
@@ -13,8 +33,8 @@ parse_flags( int argc, char** argv, Runtime_flags* r_flags )
 
         if( strcmp( flag, "-i") == 0 || strcmp( flag, "--instances" ) == 0 ) {
             ENSURE_ERR( (i+2) < argc, "Missing arguments for %s flag. See -h for help", flag );
-            r_flags->instance_path_1 = argv[++i];
-            r_flags->instance_path_2 = argv[++i];
+            r_flags->instance_path_1 = unescape_path( argv[++i] );
+            r_flags->instance_path_2 = unescape_path( argv[++i] );
         }
 
         if( strcmp( flag, "-h" ) == 0 || strcmp( flag, "--help" ) == 0 ) {
@@ -27,10 +47,13 @@ parse_flags( int argc, char** argv, Runtime_flags* r_flags )
         }
 
         if( strcmp( flag, "-o" ) == 0 || strcmp( flag, "--output" ) == 0 ) {
-            ENSURE_ERR( (i++) < argc, "Missing argument for %s flag. See -h for help", flag );
+            ENSURE_ERR( (++i) < argc, "Missing argument for %s flag. See -h for help", flag );
 
             char* output_path;
-            char* _output_path = replace_path_variables( argv[i], NULL );
+
+            char* unescaped_path = unescape_path( argv[i] );
+            char* _output_path = replace_path_variables( unescaped_path, NULL );
+            free( unescaped_path );
 
             if( strncmp( _output_path + strlen( _output_path ) - 5, ".json", 5 ) != 0 ) {
                 output_path = concat_strings( _output_path, ".json" );

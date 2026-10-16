@@ -17,10 +17,10 @@ factorio-mod-diff [FLAGS]
     -i | --instances <path 1> <path 2> path should point to the base directory of Factorio (for Steam installs: <steam>/steamapps/common/Factorio). <path 1> expects a 1.x or 2.x install while <path 2> only expects a 2.x install
     -o | --output <path> defaults to stdout, any other path will generate a file. ".json" does not need to be mentioned.
 ```
-`<path>` may include `~` which will be substituted with your home directory.
+`<path>` may include `~` which will be substituted with your home directory. Any whitespaces must be escaped using "\\".
 
 # TODO
-- [ ] Add support for 'space' in \<path\>
+- [x] Add support for 'space' in \<path\>
 - [x] Generate full migration map from all mods per instance
 - [ ] Add UI with clay
 - [ ] Remove trailing "/" from -i path flags

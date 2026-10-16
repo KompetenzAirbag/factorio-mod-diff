@@ -221,6 +221,9 @@ main( int argc, char** argv )
 
     free_migration_map( &migration_map );
 
+    free( r_flags.instance_path_1 );
+    free( r_flags.instance_path_2 );
+
     if( r_flags.should_close_output_file ) {
         free( r_flags.output_path );
         fclose( r_flags.output_file );
