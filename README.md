@@ -26,3 +26,5 @@ factorio-mod-diff [FLAGS]
 - [ ] Remove trailing "/" from -i path flags
 - [ ] There can be multiple zips of the same mod (i. e. different versions)
 - [x] Run factorio instances in child process so they run in parallel
+- [ ] Add flag for switching to "expensive" 1.1 recipes
+- [ ] Refactor code so that \<path\> can be any Factorio version in any order
