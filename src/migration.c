@@ -357,3 +357,25 @@ free_migration_map( struct hashmap* migration_map )
 
     hashmap_free( migration_map );
 };
+
+char*
+get_migrated_name( struct hashmap* migration_map, cJSON* recipe_obj )
+{
+    cJSON* recipe_name_obj = cJSON_GetObjectItem( recipe_obj, "name" );
+    char* recipe_name = cJSON_GetStringValue( recipe_name_obj );
+
+    char* recipe_string = cJSON_Print( recipe_obj );
+    ENSURE_NON_NULL( recipe_name, "Could not find recipe name in recipe: %s")
+    free( recipe_string );
+
+    char* search_name;
+
+    const Migration_data* migr_data = hashmap_get( migration_map, &(Migration_data){ .from = recipe_name } );
+    if( migr_data ) {
+        search_name = migr_data->to;
+    } else {
+        search_name = recipe_name;
+    }
+
+    return search_name;
+}

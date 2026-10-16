@@ -2,6 +2,7 @@
 
 #include "factorio_instance.h"
 #include "hashmap/hashmap.h"
+#include "cJSON.h"
 
 typedef struct Migration_data
 {
@@ -18,3 +19,8 @@ get_full_migration( Factorio_instance* inst_1, Factorio_instance* inst_2 );
 
 void
 free_migration_map( struct hashmap* migration_map );
+
+/* get_migrated_name applies the migration to the recipe name. The returned
+   pointer must NOT be freed. */
+char*
+get_migrated_name( struct hashmap* migration_map, cJSON* recipe_obj );
