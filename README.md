@@ -21,7 +21,8 @@ factorio-mod-diff [FLAGS]
 
 # TODO
 - [ ] Add support for 'space' in \<path\>
-- [ ] Generate full migration map from all mods per instance
+- [x] Generate full migration map from all mods per instance
 - [ ] Add UI with clay
 - [ ] Remove trailing "/" from -i path flags
 - [ ] There can be multiple zips of the same mod (i. e. different versions)
+- [ ] Run factorio instances in child process so they run in parallel
