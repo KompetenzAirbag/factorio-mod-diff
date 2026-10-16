@@ -9,7 +9,6 @@
 
 #include <malloc.h>
 #include <dirent.h>
-#include <stdio.h>
 #include <string.h>
 
 int

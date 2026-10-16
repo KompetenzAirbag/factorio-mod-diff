@@ -77,9 +77,20 @@ generate_recipe_diff( struct hashmap* migration_map, Factorio_instance* inst_1, 
             /* Default to normal difficulty. This will only be active for
                1.1 instances */
             cJSON* ingredients_1 = cJSON_GetObjectItem( recipe_1, "normal" );
+            int was_hidden = 0;
 
-            if( ingredients_1 ) ingredients_1 = cJSON_GetObjectItem( ingredients_1, "ingredients" );
-            else ingredients_1 = cJSON_GetObjectItem( recipe_1, "ingredients" );
+            if( ingredients_1 ) {
+                cJSON* hidden_obj = cJSON_GetObjectItem( ingredients_1, "hidden" );
+                was_hidden = cJSON_IsTrue( hidden_obj );
+
+                ingredients_1 = cJSON_GetObjectItem( ingredients_1, "ingredients" );
+            }
+            else {
+                cJSON* hidden_obj = cJSON_GetObjectItem( recipe_1, "hidden" );
+                was_hidden = cJSON_IsTrue( hidden_obj );
+
+                ingredients_1 = cJSON_GetObjectItem( recipe_1, "ingredients" );
+            }
 
             char* recipe_string = cJSON_Print( recipe_1 );
             ENSURE_NON_NULL( ingredients_1, "Could not find \"ingredients\" in recipe: %s", recipe_string );
@@ -90,9 +101,27 @@ generate_recipe_diff( struct hashmap* migration_map, Factorio_instance* inst_1, 
             ENSURE_NON_NULL( ingredients_2, "Could not find \"ingredients\" in recipe: %s", recipe_string );
             free( recipe_string );
 
-            cJSON* obj = cJSON_AddObjectToObject( output, search_name );
+            cJSON* obj;
+
+            cJSON* hidden_obj = cJSON_GetObjectItem( recipe_2, "hidden" );
+            int is_hidden = cJSON_IsTrue( hidden_obj );
+
+            if( was_hidden && is_hidden ) {
+                continue;
+            } else {
+                obj = cJSON_AddObjectToObject( output, search_name );
+
+                if( was_hidden ) {
+                    cJSON_AddBoolToObject( obj, "was-hidden", 1 );
+                }
+                if( is_hidden ) {
+                    cJSON_AddBoolToObject( obj, "is-hidden", 1 );
+                }
+
+                ENSURE_NON_NULL( obj, "Failed to add object to object" );
+            }
             cJSON* ingredients_arr = cJSON_AddArrayToObject( obj, "ingredients" );
-            ENSURE_NON_NULL( ingredients_arr, "Failed to add object to object" );
+            ENSURE_NON_NULL( ingredients_arr, "Failed to add array to object" );
 
             cJSON* ingr_1;
             cJSON_ArrayForEach( ingr_1, ingredients_1 ) {
