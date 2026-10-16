@@ -209,8 +209,9 @@ main( int argc, char** argv )
     LOG_VERBOSE( "Generate recipe json data" );
     cJSON* output = generate_recipe_diff( &migration_map, &inst_1, &inst_2, &r_flags );
 
+    LOG_VERBOSE( "Writing output to: %s", r_flags.output_path );
     char* out = cJSON_Print( output );
-    write_file( "./output.json", out );
+    fprintf( r_flags.output_file, "%s\n", out );
     free( out );
 
     cJSON_Delete( output );
@@ -220,6 +221,9 @@ main( int argc, char** argv )
 
     free_migration_map( &migration_map );
 
-    if( r_flags.should_close_output_file ) fclose( r_flags.output_file );
+    if( r_flags.should_close_output_file ) {
+        free( r_flags.output_path );
+        fclose( r_flags.output_file );
+    }
     return 0;
 }

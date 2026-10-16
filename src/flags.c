@@ -29,13 +29,25 @@ parse_flags( int argc, char** argv, Runtime_flags* r_flags )
         if( strcmp( flag, "-o" ) == 0 || strcmp( flag, "--output" ) == 0 ) {
             ENSURE_ERR( (i++) < argc, "Missing argument for %s flag. See -h for help", flag );
 
-            char* output_file_path = replace_path_variables( argv[i], NULL );
-            r_flags->output_file = fopen( output_file_path, "w+" );
+            char* output_path;
+            char* _output_path = replace_path_variables( argv[i], NULL );
+
+            if( strncmp( _output_path + strlen( _output_path ) - 5, ".json", 5 ) != 0 ) {
+                output_path = concat_strings( _output_path, ".json" );
+                free( _output_path );
+            } else output_path = _output_path;
+
+            r_flags->output_path = output_path;
+            r_flags->output_file = fopen( r_flags->output_path, "w+" );
 
             ENSURE_NON_NULL( r_flags->output_file, "Failed to open output file: %s", strerror( errno ) );
 
             r_flags->should_close_output_file = 1;
-            free( output_file_path );
         }
+    }
+
+    if( r_flags->output_file == NULL ) {
+        r_flags->output_file = stdout;
+        r_flags->output_path = "stdout";
     }
 }
