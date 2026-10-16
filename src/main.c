@@ -50,7 +50,7 @@ parse_flags( int argc, char** argv, Runtime_flags* r_flags )
 }
 
 cJSON*
-generate_recipe_diff( struct hashmap* migration_map, Factorio_instance* inst_1, Factorio_instance* inst_2 )
+generate_recipe_diff( Migration_map* migration_map, Factorio_instance* inst_1, Factorio_instance* inst_2 )
 {
     cJSON* output = cJSON_CreateObject();
 
@@ -242,10 +242,10 @@ main( int argc, char** argv )
     generate_data_json( &inst_2 );
 
     LOG_VERBOSE( "Compute migration map" );
-    struct hashmap* migration_map = get_full_migration( &inst_1, &inst_2 );
+    Migration_map migration_map = get_full_migration( &inst_1, &inst_2 );
 
     LOG_VERBOSE( "Generate recipe json data" );
-    cJSON* output = generate_recipe_diff( migration_map, &inst_1, &inst_2 );
+    cJSON* output = generate_recipe_diff( &migration_map, &inst_1, &inst_2 );
 
     char* out = cJSON_Print( output );
     write_file( "./output.json", out );
@@ -256,7 +256,7 @@ main( int argc, char** argv )
     free_factorio_instance( &inst_1 );
     free_factorio_instance( &inst_2 );
 
-    free_migration_map( migration_map );
+    free_migration_map( &migration_map );
 
     if( r_flags.should_close_output_file ) fclose( r_flags.output_file );
     return 0;

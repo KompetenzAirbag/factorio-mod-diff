@@ -231,7 +231,41 @@ new_migration_map()
     return hashmap_new( sizeof(Migration_data), 0, 0, 0, migration_hash, migration_compare, NULL, NULL );
 }
 
-struct hashmap*
+void
+get_partial_migration( struct hashmap* migration_map, cJSON* json )
+{
+    cJSON* obj;
+    cJSON_ArrayForEach( obj, json ) {
+        cJSON* from = cJSON_GetArrayItem( obj, 0 );
+        cJSON* to = cJSON_GetArrayItem( obj, 1 );
+        char* from_str = cJSON_GetStringValue( from );
+        char* to_str = cJSON_GetStringValue( to );
+        if( from_str == NULL || to_str == NULL ) continue;
+
+        const Migration_data* migr_data = hashmap_get( migration_map, &(Migration_data){ .from = from_str });
+        if( migr_data == NULL ) {
+            Migration_data new_migr_data = {0};
+
+            new_migr_data.from = malloc( strlen( from_str ) + 1 );
+            new_migr_data.to = malloc( strlen( to_str ) + 1 );
+
+            strcpy( new_migr_data.from, from_str );
+            strcpy( new_migr_data.to, to_str );
+            hashmap_set( migration_map, &new_migr_data );
+        } else {
+            Migration_data new_migr_data = {0};
+
+            new_migr_data.from = migr_data->from;
+            new_migr_data.to = realloc( migr_data->to, strlen( to_str ) + 1 );
+            strcpy( new_migr_data.to, to_str );
+
+            hashmap_set( migration_map, &new_migr_data );
+        }
+    }
+
+}
+
+Migration_map
 get_full_migration( Factorio_instance* inst_1, Factorio_instance* inst_2 )
 {
     String_buf active_mods_1 = get_active_mods( inst_1 );
@@ -280,7 +314,10 @@ get_full_migration( Factorio_instance* inst_1, Factorio_instance* inst_2 )
     free_string_buf( &active_mods_1 );
     free_string_buf( &active_mods_2 );
 
-    struct hashmap* migration_map = new_migration_map();
+    Migration_map m_map = {0};
+    m_map.recipe_map = new_migration_map();
+    m_map.fluid_map  = new_migration_map();
+    m_map.item_map   = new_migration_map();
 
     Migration_file_list m_file_list = get_needed_migration_file_list( unzip_dir_1, unzip_dir_2 );
     for( uint i = 0; i < m_file_list.count; i++ ) {
@@ -295,39 +332,17 @@ get_full_migration( Factorio_instance* inst_1, Factorio_instance* inst_2 )
             free( read_file );
 
             cJSON* recipe_migration = cJSON_GetObjectItem( json_migration, "recipe" );
-            if( recipe_migration == NULL ) {
+            cJSON* item_migration = cJSON_GetObjectItem( json_migration, "item" );
+            cJSON* fluid_migration = cJSON_GetObjectItem( json_migration, "fluid" );
+
+            if( recipe_migration == NULL || item_migration == NULL || fluid_migration == NULL ) {
                 cJSON_Delete( json_migration );
                 continue;
             }
 
-            cJSON* obj;
-            cJSON_ArrayForEach( obj, recipe_migration ) {
-                cJSON* from = cJSON_GetArrayItem( obj, 0 );
-                cJSON* to = cJSON_GetArrayItem( obj, 1 );
-                char* from_str = cJSON_GetStringValue( from );
-                char* to_str = cJSON_GetStringValue( to );
-                if( from_str == NULL || to_str == NULL ) continue;
-
-                const Migration_data* migr_data = hashmap_get( migration_map, &(Migration_data){ .from = from_str });
-                if( migr_data == NULL ) {
-                    Migration_data new_migr_data = {0};
-
-                    new_migr_data.from = malloc( strlen( from_str ) + 1 );
-                    new_migr_data.to = malloc( strlen( to_str ) + 1 );
-
-                    strcpy( new_migr_data.from, from_str );
-                    strcpy( new_migr_data.to, to_str );
-                    hashmap_set( migration_map, &new_migr_data );
-                } else {
-                    Migration_data new_migr_data = {0};
-
-                    new_migr_data.from = migr_data->from;
-                    new_migr_data.to = realloc( migr_data->to, strlen( to_str ) + 1 );
-                    strcpy( new_migr_data.to, to_str );
-
-                    hashmap_set( migration_map, &new_migr_data );
-                }
-            }
+            get_partial_migration( m_map.recipe_map, recipe_migration );
+            get_partial_migration( m_map.item_map, item_migration );
+            get_partial_migration( m_map.item_map, fluid_migration );
 
             cJSON_Delete( json_migration );
         }
@@ -339,11 +354,11 @@ get_full_migration( Factorio_instance* inst_1, Factorio_instance* inst_2 )
 
     free( m_file_list.items );
 
-    return migration_map;
+    return m_map;
 }
 
 void
-free_migration_map( struct hashmap* migration_map )
+free_single_migration_map( struct hashmap* migration_map )
 {
     ulong iter = 0;
     void* item;
@@ -355,25 +370,55 @@ free_migration_map( struct hashmap* migration_map )
     }
 
     hashmap_free( migration_map );
+}
+
+void
+free_migration_map( Migration_map* migration_map )
+{
+    free_single_migration_map( migration_map->recipe_map );
+    free_single_migration_map( migration_map->item_map );
+    free_single_migration_map( migration_map->fluid_map );
 };
 
 char*
-get_migrated_name( struct hashmap* migration_map, cJSON* recipe_obj )
+get_migrated_name( Migration_map* migration_map, cJSON* obj )
 {
-    cJSON* recipe_name_obj = cJSON_GetObjectItem( recipe_obj, "name" );
+    cJSON* recipe_name_obj = cJSON_GetObjectItem( obj, "name" );
     char* recipe_name = cJSON_GetStringValue( recipe_name_obj );
 
-    char* recipe_string = cJSON_Print( recipe_obj );
+    char* recipe_string = cJSON_Print( obj );
     ENSURE_NON_NULL( recipe_name, "Could not find recipe name in recipe: %s")
     free( recipe_string );
 
+    cJSON* type_obj = cJSON_GetObjectItem( obj, "type" );
+    ENSURE_NON_NULL( type_obj, "Could not determine type" );
+    char* type_name = cJSON_GetStringValue( type_obj );
+
     char* search_name;
 
-    const Migration_data* migr_data = hashmap_get( migration_map, &(Migration_data){ .from = recipe_name } );
-    if( migr_data ) {
-        search_name = migr_data->to;
-    } else {
-        search_name = recipe_name;
+    if( strcmp( type_name, "recipe" ) == 0 ) {
+        const Migration_data* migr_data = hashmap_get( migration_map->recipe_map, &(Migration_data){ .from = recipe_name } );
+        if( migr_data ) {
+            search_name = migr_data->to;
+        } else {
+            search_name = recipe_name;
+        }
+    }
+    else if( strcmp( type_name, "item" ) == 0 ) {
+        const Migration_data* migr_data = hashmap_get( migration_map->item_map, &(Migration_data){ .from = recipe_name } );
+        if( migr_data ) {
+            search_name = migr_data->to;
+        } else {
+            search_name = recipe_name;
+        }
+    }
+    else if( strcmp( type_name, "fluid" ) == 0 ) {
+        const Migration_data* migr_data = hashmap_get( migration_map->fluid_map, &(Migration_data){ .from = recipe_name } );
+        if( migr_data ) {
+            search_name = migr_data->to;
+        } else {
+            search_name = recipe_name;
+        }
     }
 
     return search_name;
