@@ -136,6 +136,16 @@ get_home_dir()
 #endif
 }
 
+void
+write_file( char* path, char* content)
+{
+    FILE* file = fopen( path, "w+" );
+    ENSURE_NON_NULL( file, "Could not open file for writing" );
+
+    fprintf( file, "%s", content );
+    fclose( file );
+}
+
 char*
 load_file( char* path )
 {

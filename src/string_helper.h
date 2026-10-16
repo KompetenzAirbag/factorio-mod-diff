@@ -39,6 +39,9 @@ concat_strings_with_delimiter( char* str_1, char* str_2, char delimiter );
 char*
 get_home_dir();
 
+void
+write_file( char* path, char* content);
+
 /* load_file loads an entire file and returns its content. This function
    allocates memory which must be freed */
 char*
