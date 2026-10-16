@@ -5,24 +5,41 @@
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
-void
+pid_t
 run_factorio_instance( char* path, char* args )
 {
-    char* exe_path = concat_strings_with_delimiter( path, args, ' ' );
+    pid_t pid = fork();
+    ENSURE_ERR( pid != -1, "Failed to create child process for factorio instance: %s", strerror( errno ) );
 
-    int status = system( exe_path );
-    ENSURE_ERR( status == 0, "Factorio did not run successfully and exited with status code %i", status );
+    if( pid == 0 ) {
+        char* exe_path = concat_strings_with_delimiter( path, args, ' ' );
 
-    free( exe_path );
+        int status = system( exe_path );
+        ENSURE_ERR( status == 0, "Factorio did not run successfully and exited with status code %i", status );
+
+        free( exe_path );
+
+        _exit( 0 );
+    }
+
+    return pid;
 }
 
-cJSON*
+void
 generate_data_json( Factorio_instance* inst )
 {
     char* factorio_flags = "--dump-data > /dev/null 2>&1";
 
-    run_factorio_instance( inst->bin_path, factorio_flags );
+    inst->pid = run_factorio_instance( inst->bin_path, factorio_flags );
+}
+
+cJSON*
+get_data_json( Factorio_instance* inst )
+{
+    LOG_VERBOSE( "Waiting for Factorio instance to finish (pid: %i)", inst->pid );
+    waitpid( inst->pid, NULL, 0 );
 
     char* data_dump_file_path = concat_strings( inst->config_path, "/../script-output/data-raw-dump.json" );
     char* data_dump_file = load_file( data_dump_file_path );

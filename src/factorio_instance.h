@@ -2,6 +2,7 @@
 
 #include "cJSON.h"
 #include "string_helper.h"
+#include "unistd.h"
 
 typedef struct Factorio_instance
 {
@@ -9,13 +10,15 @@ typedef struct Factorio_instance
     char* bin_path;
     char* config_path;
     char* mods_path;
+
+    pid_t pid;
 } Factorio_instance;
 
 void
-run_factorio_instance( char* path, char* args );
+generate_data_json( Factorio_instance* inst );
 
 cJSON*
-generate_data_json( Factorio_instance* inst );
+get_data_json( Factorio_instance* inst );
 
 char*
 replace_path_variables( char* path, Factorio_instance* inst );
