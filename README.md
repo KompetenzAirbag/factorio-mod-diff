@@ -28,3 +28,4 @@ factorio-mod-diff [FLAGS]
 - [x] Run factorio instances in child process so they run in parallel
 - [x] Add flag for switching to "expensive" 1.1 recipes
 - [ ] Refactor code so that \<path\> can be any Factorio version in any order
+- [ ] Add warning for differently enabled mods across instances

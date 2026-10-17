@@ -387,12 +387,17 @@ get_migrated_name( Migration_map* migration_map, cJSON* obj )
     char* recipe_name = cJSON_GetStringValue( recipe_name_obj );
 
     char* recipe_string = cJSON_Print( obj );
-    ENSURE_NON_NULL( recipe_name, "Could not find recipe name in recipe: %s")
+    ENSURE_NON_NULL( recipe_name, "Could not find recipe name in recipe: %s", recipe_string );
     free( recipe_string );
 
+    char* type_name;
     cJSON* type_obj = cJSON_GetObjectItem( obj, "type" );
-    ENSURE_NON_NULL( type_obj, "Could not determine type" );
-    char* type_name = cJSON_GetStringValue( type_obj );
+
+    if( type_obj == NULL ) {
+        type_name = "recipe";
+    } else {
+        type_name = cJSON_GetStringValue( type_obj );
+    }
 
     char* search_name;
 
