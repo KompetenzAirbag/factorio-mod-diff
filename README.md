@@ -29,3 +29,4 @@ factorio-mod-diff [FLAGS]
 - [x] Add flag for switching to "expensive" 1.1 recipes
 - [ ] Refactor code so that \<path\> can be any Factorio version in any order
 - [ ] Add warning for differently enabled mods across instances
+- [ ] Sometimes an ingredient is marked as "added" although nothing changed (`wooden-chest`)

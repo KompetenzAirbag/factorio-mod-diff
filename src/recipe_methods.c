@@ -1,4 +1,6 @@
 #include "recipe_methods.h"
+#include "cJSON.h"
+#include "migration.h"
 #include "util/util.h"
 
 #include <math.h> // NAN
@@ -54,10 +56,6 @@ get_ingredients( cJSON* recipe )
 {
     cJSON* ingredients = cJSON_GetObjectItem( recipe, "ingredients" );
 
-    char* recipe_string = cJSON_Print( recipe );
-    ENSURE_NON_NULL( ingredients, "Could not find \"ingredients\" in recipe: %s", recipe_string );
-    free( recipe_string );
-
     return ingredients;
 }
 
@@ -104,6 +102,7 @@ generate_recipe_diff( Migration_map* migration_map, Factorio_instance* inst_1, F
     cJSON* all_recipes_2 = cJSON_GetObjectItem( json_2, "recipe" );
     ENSURE_NON_NULL( all_recipes_2, "Could not load recipes from json for instance 2" );
 
+    /* Forward iteration of all recipes of instance 1 */
     cJSON* recipe_1;
     cJSON_ArrayForEach( recipe_1, all_recipes_1 ) {
         recipe_1 = get_recipe( recipe_1, r_flags->use_expensive_recipe );
@@ -116,31 +115,26 @@ generate_recipe_diff( Migration_map* migration_map, Factorio_instance* inst_1, F
             add_removed_recipe( output, recipe_name_1 );
         } else {
             cJSON* ingredients_1 = get_ingredients( recipe_1 );
+            cJSON* ingredients_2 = get_ingredients( recipe_2 );
+            if( ingredients_1 == NULL || ingredients_2 == NULL ) continue;
 
             cJSON* hidden_obj = cJSON_GetObjectItem( recipe_1, "hidden" );
             int was_hidden = cJSON_IsTrue( hidden_obj );
 
-            cJSON* ingredients_2 = get_ingredients( recipe_2 );
-
             hidden_obj = cJSON_GetObjectItem( recipe_2, "hidden" );
             int is_hidden = cJSON_IsTrue( hidden_obj );
 
-            cJSON* obj;
+            if( was_hidden && is_hidden ) continue;
+            cJSON* obj = cJSON_AddObjectToObject( output, recipe_name_1 );
 
-            if( was_hidden && is_hidden ) {
-                continue;
-            } else {
-                obj = cJSON_AddObjectToObject( output, recipe_name_1 );
-
-                if( was_hidden ) {
-                    cJSON_AddBoolToObject( obj, "was-hidden", 1 );
-                }
-                if( is_hidden ) {
-                    cJSON_AddBoolToObject( obj, "is-hidden", 1 );
-                }
-
-                ENSURE_NON_NULL( obj, "Failed to add object to object" );
+            if( was_hidden ) {
+                cJSON_AddBoolToObject( obj, "was-hidden", 1 );
             }
+            if( is_hidden ) {
+                cJSON_AddBoolToObject( obj, "is-hidden", 1 );
+            }
+
+            ENSURE_NON_NULL( obj, "Failed to add object to object" );
 
             cJSON* ingredients_arr = cJSON_AddArrayToObject( obj, "ingredients" );
             ENSURE_NON_NULL( ingredients_arr, "Failed to add array to object" );
@@ -193,6 +187,49 @@ generate_recipe_diff( Migration_map* migration_map, Factorio_instance* inst_1, F
                 if( found == 0 ) {
                     add_ingr_with_amount( ingredients_arr, name_1, get_amount( ingr_1 ), "added" );
                 }
+            }
+        }
+    }
+
+    /* Backwards iteration to fill all newly added recipes */
+    cJSON_ArrayForEach( recipe_1, all_recipes_2 ) {
+        recipe_1 = get_recipe( recipe_1, r_flags->use_expensive_recipe );
+        char* name_1 = get_migrated_name( migration_map, recipe_1 );
+
+        cJSON* recipe_2 = cJSON_GetObjectItem( all_recipes_1, name_1 );
+        recipe_2 = get_recipe( recipe_2, r_flags->use_expensive_recipe );
+
+        cJSON* recipe_in_map = cJSON_GetObjectItem( output, name_1 );
+        if( recipe_in_map == NULL ) {
+            cJSON* ingredients_1 = get_ingredients( recipe_1 );
+            if( ingredients_1 == NULL ) continue;
+
+            cJSON* hidden_obj = cJSON_GetObjectItem( recipe_1, "hidden" );
+            int is_hidden = cJSON_IsTrue( hidden_obj );
+
+            hidden_obj = cJSON_GetObjectItem( recipe_2, "hidden" );
+            int was_hidden = cJSON_IsTrue( hidden_obj );
+
+            if( was_hidden && is_hidden ) continue;
+
+            cJSON* obj = cJSON_AddObjectToObject( output, name_1 );
+            cJSON_AddStringToObject( obj, "status", "added" );
+
+            if( was_hidden ) {
+                cJSON_AddBoolToObject( obj, "was-hidden", 1 );
+            }
+            if( is_hidden ) {
+                cJSON_AddBoolToObject( obj, "is-hidden", 1 );
+            }
+
+            cJSON* ingredients_arr = cJSON_AddArrayToObject( obj, "ingredients" );
+            ENSURE_NON_NULL( ingredients_arr, "Failed to add array to object" );
+
+            cJSON* ingr_1;
+            cJSON_ArrayForEach( ingr_1, ingredients_1 ) {
+                char* ingr_1_name = get_migrated_name( migration_map, ingr_1 );
+                double amt = get_amount( ingr_1 );
+                add_ingr_with_amount( ingredients_arr, ingr_1_name, amt, "added");
             }
         }
     }
