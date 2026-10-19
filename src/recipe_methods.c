@@ -125,16 +125,20 @@ generate_recipe_diff( Migration_map* migration_map, Factorio_instance* inst_1, F
             int is_hidden = cJSON_IsTrue( hidden_obj );
 
             if( was_hidden && is_hidden ) continue;
+
             cJSON* obj = cJSON_AddObjectToObject( output, recipe_name_1 );
+            ENSURE_NON_NULL( obj, "Failed to add object to object" );
+
+            int has_change = 0;
 
             if( was_hidden ) {
                 cJSON_AddBoolToObject( obj, "was-hidden", 1 );
+                has_change = 1;
             }
             if( is_hidden ) {
                 cJSON_AddBoolToObject( obj, "is-hidden", 1 );
+                has_change = 1;
             }
-
-            ENSURE_NON_NULL( obj, "Failed to add object to object" );
 
             cJSON* ingredients_arr = cJSON_CreateArray();
             ENSURE_NON_NULL( ingredients_arr, "Failed to add array to object" );
@@ -162,12 +166,14 @@ generate_recipe_diff( Migration_map* migration_map, Factorio_instance* inst_1, F
                         }
 
                         add_ingr_with_amount( ingredients_arr, name, amt_diff, "changed" );
+                        has_change = 1;
                         break;
                     }
                 }
 
                 if( found == 0 ) {
                     add_ingr_with_amount( ingredients_arr, name, get_amount( ingr_1 ) * -1, "removed" );
+                    has_change = 1;
                 }
             }
 
@@ -189,14 +195,16 @@ generate_recipe_diff( Migration_map* migration_map, Factorio_instance* inst_1, F
 
                 if( found == 0 ) {
                     add_ingr_with_amount( ingredients_arr, name_1, get_amount( ingr_1 ), "added" );
+                    has_change = 1;
                 }
             }
 
-            if( cJSON_GetArraySize( ingredients_arr ) == 0 ) {
-                cJSON_Delete( ingredients_arr );
+            if( has_change == 0 ) {
                 cJSON_AddStringToObject( obj, "status", "unchanged" );
-                continue;
+            } else {
+                cJSON_AddStringToObject( obj, "status", "changed" );
             }
+
             cJSON_AddItemToObject( obj, "ingredients", ingredients_arr );
         }
     }
