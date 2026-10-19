@@ -136,7 +136,7 @@ generate_recipe_diff( Migration_map* migration_map, Factorio_instance* inst_1, F
 
             ENSURE_NON_NULL( obj, "Failed to add object to object" );
 
-            cJSON* ingredients_arr = cJSON_AddArrayToObject( obj, "ingredients" );
+            cJSON* ingredients_arr = cJSON_CreateArray();
             ENSURE_NON_NULL( ingredients_arr, "Failed to add array to object" );
 
             /* Iterate "forwards" from ingredients 1 */
@@ -150,6 +150,7 @@ generate_recipe_diff( Migration_map* migration_map, Factorio_instance* inst_1, F
                     char* name_2 = get_migrated_name( migration_map, ingr_2 );
 
                     if( strcmp( name, name_2 ) == 0 ) {
+                        cJSON_AddBoolToObject( ingr_2, "checked", 1 );
                         found = 1;
 
                         double amount_1 = get_amount( ingr_1 );
@@ -168,8 +169,11 @@ generate_recipe_diff( Migration_map* migration_map, Factorio_instance* inst_1, F
                 }
             }
 
-            /* Reiterate "backwards" to backfill all newly added recipes */
+            /* Reiterate "backwards" to backfill all newly added ingredients */
             cJSON_ArrayForEach( ingr_1, ingredients_2 ) {
+                cJSON* checked_obj = cJSON_GetObjectItem( ingr_1, "checked" );
+                if( cJSON_IsTrue( checked_obj ) ) continue;
+
                 char* name_1 = get_migrated_name( migration_map, ingr_1 );
 
                 int found = 0;
@@ -188,6 +192,13 @@ generate_recipe_diff( Migration_map* migration_map, Factorio_instance* inst_1, F
                     add_ingr_with_amount( ingredients_arr, name_1, get_amount( ingr_1 ), "added" );
                 }
             }
+
+            if( cJSON_GetArraySize( ingredients_arr ) == 0 ) {
+                cJSON_Delete( ingredients_arr );
+                cJSON_AddStringToObject( obj, "status", "unchanged" );
+                continue;
+            }
+            cJSON_AddItemToObject( obj, "ingredients", ingredients_arr );
         }
     }
 
