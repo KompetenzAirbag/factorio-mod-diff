@@ -37,28 +37,56 @@ unzip_mods( char* mods_path, String_buf* active_mods, char* output_path )
     ENSURE_NON_NULL( dir, "Could not open directory %s", mods_path );
 
     String_buf paths_to_unzip = {0};
+    String_buf paths_to_cp = {0};
+    String_buf mod_names_to_cp = {0};
     ulong mods_path_strlen = strlen( mods_path );
 
     const struct dirent* ent;
     while( (ent = readdir( dir )) != NULL ) {
         String_buf mod_names = split_string( ent->d_name, '_' );
+        if( mod_names.count < 1 ) continue;
 
         for( uint i = 0; i < active_mods->count; i++ ) {
             ulong active_mod_strlen = strlen( active_mods->items[i] );
             ulong file_name_strlen = strlen( ent->d_name );
 
             if( file_name_strlen < active_mod_strlen ) continue;
-            if( strncmp( ent->d_name + file_name_strlen - 4, ".zip", 4 ) != 0 ) continue;
-
-            if( mod_names.count < 1 ) continue;
 
             if( strcmp( mod_names.items[0], active_mods->items[i] ) == 0 ) {
-                da_append( &paths_to_unzip, (char*){0} );
-                paths_to_unzip.items[paths_to_unzip.count - 1] = malloc( file_name_strlen + mods_path_strlen + 2 );
+                if( strncmp( ent->d_name + file_name_strlen - 4, ".zip", 4 ) == 0 ) { /* Needs to unzip */
+                    char* unzip_path = malloc( file_name_strlen + mods_path_strlen + 2 );
 
-                strcpy( paths_to_unzip.items[paths_to_unzip.count - 1], mods_path );
-                paths_to_unzip.items[paths_to_unzip.count - 1][mods_path_strlen] = '/';
-                strcpy( paths_to_unzip.items[paths_to_unzip.count - 1] + mods_path_strlen + 1, ent->d_name );
+                    strcpy( unzip_path , mods_path );
+                    unzip_path[mods_path_strlen] = '/';
+                    strcpy( unzip_path + mods_path_strlen + 1, ent->d_name );
+
+                    da_append( &paths_to_unzip, unzip_path );
+
+                } else { /* Needs to cp */
+                    char* cp_path = malloc( file_name_strlen + mods_path_strlen + 2 );
+
+                    strcpy( cp_path, mods_path );
+                    cp_path[mods_path_strlen] = '/';
+                    strcpy( cp_path + mods_path_strlen + 1, ent->d_name );
+
+                    char* _migrations_dir = concat_strings( cp_path, "/migrations" );
+                    DIR* dir = opendir( _migrations_dir );
+                    free( _migrations_dir );
+
+                    if( !dir ) {
+                        free( cp_path );
+                        closedir( dir );
+                        continue;
+                    }
+
+                    closedir( dir );
+
+                    char* mod_name = malloc( file_name_strlen + 1 );
+                    strcpy( mod_name, ent->d_name );
+                    da_append( &mod_names_to_cp, mod_name );
+
+                    da_append( &paths_to_cp, cp_path );
+                }
             }
         }
 
@@ -67,6 +95,30 @@ unzip_mods( char* mods_path, String_buf* active_mods, char* output_path )
 
     char* mkdir_command = concat_strings_with_delimiter( "mkdir -p", output_path, ' ');
     system( mkdir_command );
+
+    for( uint i = 0; i < paths_to_cp.count; i++ ) {
+        char* cp_path = replace_in_string( paths_to_cp.items[i], NULL, " ", "\\ " );
+
+        char* out_path_1 = concat_strings( mkdir_command, "/" );
+        char* out_path_2 = concat_strings( out_path_1, mod_names_to_cp.items[i] );
+        system( out_path_2 );
+
+        String_buf ss = split_string( out_path_2, ' ' );
+
+        char* cp_cmd_1 = concat_strings_with_delimiter( "cp -r", cp_path, ' ' );
+        char* cp_cmd_2 = concat_strings( cp_cmd_1, "/migrations" );
+        char* cp_cmd_3 = concat_strings_with_delimiter( cp_cmd_2, ss.items[2], ' ' );
+        system( cp_cmd_3 );
+
+        free_string_buf( &ss );
+        free( out_path_1 );
+        free( out_path_2 );
+        free( cp_path );
+        free( cp_cmd_1 );
+        free( cp_cmd_2 );
+        free( cp_cmd_3 );
+    }
+
     free( mkdir_command );
 
     for( uint i = 0; i < paths_to_unzip.count; i++ ) {
@@ -91,7 +143,9 @@ unzip_mods( char* mods_path, String_buf* active_mods, char* output_path )
 
     closedir (dir);
 
+    free_string_buf( &mod_names_to_cp );
     free_string_buf( &paths_to_unzip );
+    free_string_buf( &paths_to_cp );
 }
 
 typedef struct Migration_file_list
@@ -332,17 +386,12 @@ get_full_migration( Factorio_instance* inst_1, Factorio_instance* inst_2 )
             free( read_file );
 
             cJSON* recipe_migration = cJSON_GetObjectItem( json_migration, "recipe" );
-            cJSON* item_migration = cJSON_GetObjectItem( json_migration, "item" );
-            cJSON* fluid_migration = cJSON_GetObjectItem( json_migration, "fluid" );
+            cJSON* item_migration   = cJSON_GetObjectItem( json_migration, "item" );
+            cJSON* fluid_migration  = cJSON_GetObjectItem( json_migration, "fluid" );
 
-            if( recipe_migration == NULL || item_migration == NULL || fluid_migration == NULL ) {
-                cJSON_Delete( json_migration );
-                continue;
-            }
-
-            get_partial_migration( m_map.recipe_map, recipe_migration );
-            get_partial_migration( m_map.item_map, item_migration );
-            get_partial_migration( m_map.item_map, fluid_migration );
+            if( recipe_migration ) get_partial_migration( m_map.recipe_map, recipe_migration );
+            if( item_migration )   get_partial_migration( m_map.item_map, item_migration );
+            if( fluid_migration )  get_partial_migration( m_map.fluid_map, fluid_migration );
 
             cJSON_Delete( json_migration );
         }
@@ -424,6 +473,9 @@ get_migrated_name( Migration_map* migration_map, cJSON* obj )
         } else {
             search_name = recipe_name;
         }
+    }
+    else {
+        LOG_ERROR( "Failed to get migrated name" );
     }
 
     return search_name;

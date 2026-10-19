@@ -150,14 +150,16 @@ generate_recipe_diff( Migration_map* migration_map, Factorio_instance* inst_1, F
                     char* name_2 = get_migrated_name( migration_map, ingr_2 );
 
                     if( strcmp( name, name_2 ) == 0 ) {
-                        cJSON_AddBoolToObject( ingr_2, "checked", 1 );
                         found = 1;
 
                         double amount_1 = get_amount( ingr_1 );
                         double amount_2 = get_amount( ingr_2 );
 
                         double amt_diff = amount_2 - amount_1;
-                        if( amt_diff == 0 ) break;
+                        if( amt_diff == 0 ) {
+                            add_ingr_with_amount( ingredients_arr, name, amount_1, "unchanged" );
+                            continue;
+                        }
 
                         add_ingr_with_amount( ingredients_arr, name, amt_diff, "changed" );
                         break;
@@ -165,15 +167,12 @@ generate_recipe_diff( Migration_map* migration_map, Factorio_instance* inst_1, F
                 }
 
                 if( found == 0 ) {
-                    add_ingr_with_amount( ingredients_arr, name, 0, "removed" );
+                    add_ingr_with_amount( ingredients_arr, name, get_amount( ingr_1 ) * -1, "removed" );
                 }
             }
 
             /* Reiterate "backwards" to backfill all newly added ingredients */
             cJSON_ArrayForEach( ingr_1, ingredients_2 ) {
-                cJSON* checked_obj = cJSON_GetObjectItem( ingr_1, "checked" );
-                if( cJSON_IsTrue( checked_obj ) ) continue;
-
                 char* name_1 = get_migrated_name( migration_map, ingr_1 );
 
                 int found = 0;
